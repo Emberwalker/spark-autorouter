@@ -1,5 +1,8 @@
 package io.drakon.spark.autorouter;
 
+import io.drakon.spark.autorouter.dispatch.BytecodeDispatch;
+import io.drakon.spark.autorouter.dispatch.IExceptionDispatch;
+import io.drakon.spark.autorouter.dispatch.IRouteDispatch;
 import org.reflections.Reflections;
 import org.reflections.scanners.MethodAnnotationsScanner;
 import org.reflections.scanners.SubTypesScanner;
@@ -9,14 +12,20 @@ import org.reflections.util.ConfigurationBuilder;
 import org.reflections.util.FilterBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import spark.ResponseTransformer;
+import spark.*;
 
+import javax.annotation.Nonnull;
 import javax.annotation.ParametersAreNonnullByDefault;
 import javax.annotation.ParametersAreNullableByDefault;
 import java.lang.annotation.Annotation;
+import java.lang.invoke.MethodHandle;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.*;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
+import static spark.Spark.*;
 import static io.drakon.spark.autorouter.Utils.*;
 import static io.drakon.spark.autorouter.Routes.NULL_STR;
 import static io.drakon.spark.autorouter.Routes.NULL_TRANSFORMER;
@@ -41,10 +50,34 @@ public class Autorouter {
             Routes.TRACE.class
     );
 
-    /**
-     * Exception thrown when route() is called more than once.
-     */
-    public static class AlreadyRoutedException extends Exception {}
+    enum RouteHandler {
+        GET(Routes.GET.class, Spark::get, Spark::get, Spark::get, Spark::get),
+        POST(Routes.POST.class, Spark::post, Spark::post, Spark::post, Spark::post),
+        PATCH(Routes.PATCH.class, Spark::patch, Spark::patch, Spark::patch, Spark::patch),
+        PUT(Routes.PUT.class, Spark::put, Spark::put, Spark::put, Spark::put),
+        HEAD(Routes.HEAD.class, Spark::head, Spark::head, Spark::head, Spark::head),
+        OPTIONS(Routes.OPTIONS.class, Spark::options, Spark::options, Spark::options, Spark::options),
+        DELETE(Routes.DELETE.class, Spark::delete, Spark::delete, Spark::delete, Spark::delete),
+        CONNECT(Routes.CONNECT.class, Spark::connect, Spark::connect, Spark::connect, Spark::connect),
+        TRACE(Routes.TRACE.class, Spark::trace, Spark::trace, Spark::trace, Spark::trace);
+
+        public final Class<? extends Annotation> annotation;
+        public final BiConsumer<String, Route> routePath;
+        public final TriConsumer<String, String, Route> routePathAndAccept;
+        public final TriConsumer<String, Route, ResponseTransformer> routePathAndTransform;
+        public final QuadConsumer<String, String, Route, ResponseTransformer> routeAll;
+
+        RouteHandler(Class<? extends Annotation> annotation, BiConsumer<String, Route> routePath,
+                      TriConsumer<String, String, Route> routePathAndAccept,
+                      TriConsumer<String, Route, ResponseTransformer> routePathAndTransform,
+                      QuadConsumer<String, String, Route, ResponseTransformer> routeAll) {
+            this.annotation = annotation;
+            this.routePath = routePath;
+            this.routePathAndAccept = routePathAndAccept;
+            this.routePathAndTransform = routePathAndTransform;
+            this.routeAll = routeAll;
+        }
+    }
 
     /** Search results container. Yes it's ugly. */
     static class SearchResult {
@@ -79,7 +112,7 @@ public class Autorouter {
         public final String acceptType;
         public final ResponseTransformer transformer;
 
-        public RouteInfo(String path, String acceptType, ResponseTransformer transformer) {
+        public RouteInfo(@Nonnull String path, String acceptType, ResponseTransformer transformer) {
             this.path = path;
             this.acceptType = acceptType;
             this.transformer = transformer;
@@ -174,14 +207,80 @@ public class Autorouter {
     }
 
     /**
-     * Searches the classpath and wires up annotated methods to the current Spark singleton.
-     *
-     * @throws AlreadyRoutedException if called multiple times.
+     * Searches the classpath and wires up annotated methods to the current Spark singleton. Will silently cancel if
+     * called multiple times.
      */
-    void route() throws AlreadyRoutedException {
-        if (routingComplete) throw new AlreadyRoutedException();
+    public void route() {
+        if (routingComplete) return;
         routingComplete = true;
 
         SearchResult searchResult = search();
+
+        // Setup filters and exception handlers
+        searchResult.exceptionHandlers.forEach(this::registerExceptionHandler);
+        searchResult.beforeFilters.forEach(pair -> {
+            Routes.Before ann = pair.second;
+            registerBeforeOrAfterFilter(pair.first, ann.path(), ann.acceptType(), Spark::before, Spark::before,
+                    Spark::before);
+        });
+        searchResult.afterFilters.forEach(pair -> {
+            Routes.After ann = pair.second;
+            registerBeforeOrAfterFilter(pair.first, ann.path(), ann.acceptType(), Spark::after, Spark::after,
+                    Spark::after);
+        });
+        searchResult.afterAfterFilters.forEach(pair -> {
+            IRouteDispatch d = generateRouteDispatcher(pair.first);
+            if (pair.second.path().equals(NULL_STR)) afterAfter(d::dispatch);
+            else afterAfter(pair.second.path(), d::dispatch);
+        });
+
+        // Setup routes
+        searchResult.routes.forEach(this::registerRoutes);
     }
+
+    private void registerExceptionHandler(Pair<Method, Routes.ExceptionHandler> pair) {
+        Method m = pair.first;
+        Class<? extends Exception> exType= pair.second.exceptionType();
+
+        Class<IExceptionDispatch> dispatchClass = new BytecodeDispatch().generateExceptionStub(m, exType);
+        IExceptionDispatch dispatch = Utils.dispatchClassToObj(dispatchClass);
+        if (dispatch == null) throw new RuntimeException("Dispatcher is null!");
+
+        exception(exType, dispatch::dispatch);
+    }
+
+    private IRouteDispatch generateRouteDispatcher(Method m) {
+        Class<IRouteDispatch> dispatchClass = new BytecodeDispatch().generateRouteStub(m);
+        IRouteDispatch dispatch = Utils.dispatchClassToObj(dispatchClass);
+        if (dispatch == null) throw new RuntimeException("Dispatcher is null!");
+
+        return dispatch;
+    }
+
+    private void registerBeforeOrAfterFilter(Method m, String path, String acceptType, Consumer<Filter> a,
+                                             BiConsumer<String, Filter> b, TriConsumer<String, String, Filter> c) {
+        IRouteDispatch d = generateRouteDispatcher(m);
+        if (path.equals(NULL_STR) && acceptType.equals(NULL_STR)) a.accept(d::dispatch);
+        else if (!path.equals(NULL_STR) && acceptType.equals(NULL_STR)) b.accept(path, d::dispatch);
+        else if (!path.equals(NULL_STR) && !acceptType.equals(NULL_STR))
+            c.apply(path, acceptType, d::dispatch);
+        else log.warn("Invalid @Before or @After handler {}#{} - acceptType must be accompanied by a path! Skipping.",
+                    m.getDeclaringClass().getName(), m.getName());
+    }
+
+    private void registerRoutes(Class<? extends Annotation> cls, Set<Pair<Method, RouteInfo>> set) {
+        @SuppressWarnings("ConstantConditions") // We know all values are mapped, thing.
+        RouteHandler rh = Arrays.stream(RouteHandler.values()).filter(h -> h.annotation == cls).findFirst().get();
+        set.forEach(pair -> {
+            IRouteDispatch d = generateRouteDispatcher(pair.first);
+            RouteInfo info = pair.second;
+            boolean hasAccept = info.acceptType != null;
+            boolean hasTransform = info.transformer != null;
+            if (hasAccept && hasTransform) rh.routeAll.apply(info.path, info.acceptType, d::dispatch, info.transformer);
+            else if (hasAccept) rh.routePathAndAccept.apply(info.path, info.acceptType, d::dispatch);
+            else if (hasTransform) rh.routePathAndTransform.apply(info.path, d::dispatch, info.transformer);
+            else rh.routePath.accept(info.path, d::dispatch);
+        });
+    }
+
 }

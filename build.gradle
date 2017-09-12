@@ -31,6 +31,9 @@ dependencies {
     // Reflections
     compile group: 'org.reflections', name: 'reflections', version: '0.9.11'
 
+    // Javassist bytecode generation
+    compile group: 'org.javassist', name: 'javassist', version: '3.21.0-GA'
+
     // Logging (SLF4j)
     compile group: 'org.slf4j', name: 'slf4j-api', version: '1.7.25'
     testRuntime group: 'ch.qos.logback', name: 'logback-classic', version: '1.2.3'

@@ -52,6 +52,14 @@ class Utils {
         return getValueFromMethod(ann, "transformer");
     }
 
+    static <T> T dispatchClassToObj(Class<T> cls) {
+        try {
+            return cls.newInstance();
+        } catch (InstantiationException|IllegalAccessException ex) {
+            return null;
+        }
+    }
+
     private static <T, S> S getValueFromMethod(T obj, String method) {
         try {
             return (S) obj.getClass().getMethod(method).invoke(obj);
@@ -62,6 +70,17 @@ class Utils {
             log.error("Wrong type given for return value from method {} on {}", method, obj);
             return null;
         }
+    }
+
+    // For dealing with routing/before/after
+    @FunctionalInterface
+    public interface TriConsumer<A,B,C> {
+        void apply(A a, B b, C c);
+    }
+
+    @FunctionalInterface
+    public interface QuadConsumer<A,B,C,D> {
+        void apply(A a, B b, C c, D d);
     }
 
 }

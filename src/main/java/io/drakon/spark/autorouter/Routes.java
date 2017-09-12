@@ -36,7 +36,7 @@ public class Routes {
     public @interface Before {
         /** Optional: Restrict this filter to this path. */
         String path() default NULL_STR;
-        /** Optional: Accept Type to restrict this filter to. */
+        /** Optional: Accept Type to restrict this filter to. Path must be specified if this is. */
         String acceptType() default NULL_STR;
     }
 
@@ -46,7 +46,7 @@ public class Routes {
     public @interface After {
         /** Optional: Restrict this filter to this path. */
         String path() default NULL_STR;
-        /** Optional: Accept Type to restrict this filter to. */
+        /** Optional: Accept Type to restrict this filter to. Path must be specified if this is.  */
         String acceptType() default NULL_STR;
     }
 
