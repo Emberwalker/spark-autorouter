@@ -1,0 +1,18 @@
+<configuration>
+    <contextName>Autorouter-Test</contextName>
+
+    <!-- STDOUT appender -->
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>[%d{HH:mm:ss}][%thread][%logger{48}][%method:%line][%-5level]: %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Default logging config -->
+    <root level="info">
+        <appender-ref ref="STDOUT" level="info"/>
+    </root>
+
+    <!-- Turn up our logging -->
+    <logger name="io.drakon.spark.autorouter" level="DEBUG"/>
+</configuration>
