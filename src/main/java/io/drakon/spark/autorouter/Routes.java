@@ -4,12 +4,12 @@ import spark.ResponseTransformer;
 
 import java.lang.annotation.*;
 
-public class Route {
+public class Routes {
 
     static final String NULL_STR = "null";
     static final Class<? extends ResponseTransformer> NULL_TRANSFORMER = ResponseTransformer.class;
 
-    private Route() {} // Static only
+    private Routes() {} // Static only
 
     /*
      * ========== Spark Helpers ============
@@ -80,7 +80,7 @@ public class Route {
         /** Optional: the accept type for the route. */
         String acceptType() default NULL_STR;
         /** Optional: The transformer class to apply. Must be a class to work around an annotations restriction. */
-        Class<? extends ResponseTransformer> transformer() default NULL_TRANSFORMER;
+        Class<? extends ResponseTransformer> transformer() default ResponseTransformer.class;
     }
 
     /** Define this method as a POST route. */
@@ -92,7 +92,7 @@ public class Route {
         /** Optional: the accept type for the route. */
         String acceptType() default NULL_STR;
         /** Optional: The transformer class to apply. Must be a class to work around an annotations restriction. */
-        Class<? extends ResponseTransformer> transformer() default NULL_TRANSFORMER;
+        Class<? extends ResponseTransformer> transformer() default ResponseTransformer.class;
     }
 
     /** Define this method as a PATCH route. */
@@ -104,7 +104,7 @@ public class Route {
         /** Optional: the accept type for the route. */
         String acceptType() default NULL_STR;
         /** Optional: The transformer class to apply. Must be a class to work around an annotations restriction. */
-        Class<? extends ResponseTransformer> transformer() default NULL_TRANSFORMER;
+        Class<? extends ResponseTransformer> transformer() default ResponseTransformer.class;
     }
 
     /** Define this method as a PUT route. */
@@ -116,7 +116,7 @@ public class Route {
         /** Optional: the accept type for the route. */
         String acceptType() default NULL_STR;
         /** Optional: The transformer class to apply. Must be a class to work around an annotations restriction. */
-        Class<? extends ResponseTransformer> transformer() default NULL_TRANSFORMER;
+        Class<? extends ResponseTransformer> transformer() default ResponseTransformer.class;
     }
 
     /** Define this method as a HEAD route. */
@@ -128,7 +128,7 @@ public class Route {
         /** Optional: the accept type for the route. */
         String acceptType() default NULL_STR;
         /** Optional: The transformer class to apply. Must be a class to work around an annotations restriction. */
-        Class<? extends ResponseTransformer> transformer() default NULL_TRANSFORMER;
+        Class<? extends ResponseTransformer> transformer() default ResponseTransformer.class;
     }
 
     /** Define this method as a OPTIONS route. */
@@ -140,7 +140,7 @@ public class Route {
         /** Optional: the accept type for the route. */
         String acceptType() default NULL_STR;
         /** Optional: The transformer class to apply. Must be a class to work around an annotations restriction. */
-        Class<? extends ResponseTransformer> transformer() default NULL_TRANSFORMER;
+        Class<? extends ResponseTransformer> transformer() default ResponseTransformer.class;
     }
 
     /** Define this method as a DELETE route. */
@@ -152,7 +152,7 @@ public class Route {
         /** Optional: the accept type for the route. */
         String acceptType() default NULL_STR;
         /** Optional: The transformer class to apply. Must be a class to work around an annotations restriction. */
-        Class<? extends ResponseTransformer> transformer() default NULL_TRANSFORMER;
+        Class<? extends ResponseTransformer> transformer() default ResponseTransformer.class;
     }
 
     /** Define this method as a CONNECT route. */
@@ -164,7 +164,7 @@ public class Route {
         /** Optional: the accept type for the route. */
         String acceptType() default NULL_STR;
         /** Optional: The transformer class to apply. Must be a class to work around an annotations restriction. */
-        Class<? extends ResponseTransformer> transformer() default NULL_TRANSFORMER;
+        Class<? extends ResponseTransformer> transformer() default ResponseTransformer.class;
     }
 
     /** Define this method as a TRACE route. */
@@ -176,7 +176,7 @@ public class Route {
         /** Optional: the accept type for the route. */
         String acceptType() default NULL_STR;
         /** Optional: The transformer class to apply. Must be a class to work around an annotations restriction. */
-        Class<? extends ResponseTransformer> transformer() default NULL_TRANSFORMER;
+        Class<? extends ResponseTransformer> transformer() default ResponseTransformer.class;
     }
 
 }
