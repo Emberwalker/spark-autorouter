@@ -44,3 +44,20 @@ dependencies {
     testCompile group: 'org.junit.jupiter', name: 'junit-jupiter-api', version: '5.0.0'
     testCompile group: 'org.junit.vintage', name: 'junit-vintage-engine', version: '4.12.0'
 }
+
+// Maven
+apply plugin: 'maven'
+
+if (!project.hasProperty("DEPLOY_DIR")) {
+    ext.DEPLOY_DIR = null
+}
+
+uploadArchives {
+    repositories {
+        mavenDeployer {
+            repository(url: "file://${DEPLOY_DIR}")
+        }
+    }
+}
+
+uploadArchives.onlyIf { return DEPLOY_DIR != null }
