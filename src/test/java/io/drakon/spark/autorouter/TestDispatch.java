@@ -1,5 +1,7 @@
 package io.drakon.spark.autorouter;
 
+import java.util.stream.Stream;
+
 import io.drakon.spark.autorouter.dispatch.BytecodeDispatch;
 import io.drakon.spark.autorouter.dispatch.IExceptionDispatch;
 import io.drakon.spark.autorouter.dispatch.IRouteDispatch;
@@ -18,20 +20,25 @@ public class TestDispatch {
     @Test
     @DisplayName("generates standard route")
     public void testRouteGen() {
-        Sample.tripped = false;
         BytecodeDispatch dispatchGen = new BytecodeDispatch();
-        Class<IRouteDispatch> cls;
+        Class<IRouteDispatch> cls1, cls2;
         try {
-            cls = dispatchGen.generateRouteStub(Sample.class.getMethod("sample",
+            cls1 = dispatchGen.generateRouteStub(Sample.class.getMethod("sample",
+                    Request.class, Response.class));
+            cls2 = dispatchGen.generateRouteStub(Sample.class.getMethod("sampleTwo",
                     Request.class, Response.class));
         } catch (ReflectiveOperationException ex) {
             fail("Exception thrown by reflection.");
             return;
         }
-        IRouteDispatch dispatch = Utils.dispatchClassToObj(cls);
-        assertNotNull(dispatch, "Dispatch object created.");
-        dispatch.dispatch(null, null);
-        assertTrue(Sample.tripped, "Sample class now reports true.");
+        IRouteDispatch dispatch1 = Utils.dispatchClassToObj(cls1);
+        IRouteDispatch dispatch2 = Utils.dispatchClassToObj(cls2);
+        Stream.of(dispatch1, dispatch2).forEach(dispatch -> {
+            Sample.tripped = false;
+            assertNotNull(dispatch, "Dispatch object created.");
+            dispatch.dispatch(null, null);
+            assertTrue(Sample.tripped, "Sample class now reports true.");
+        });
     }
 
     @Test

@@ -118,15 +118,9 @@ public class BytecodeDispatch {
                                 @Nullable Class<? extends Exception> exType) {
         Class targetClass = targetMethod.getDeclaringClass();
         // Generate unique name
-        String _basename = "io.drakon.spark.autorouter.dispatch.gen.routes$Generated" + type.name() + "Dispatch_"
-                + targetClass.getCanonicalName();
+        String basename = "io.drakon.spark.autorouter.dispatch.gen.routes$Generated" + type.name() + "Dispatch_"
+                + targetClass.getCanonicalName() + "_" + targetMethod.getName() + "$" + type.name();
         ClassPool classPool = ClassPool.getDefault();
-        String basename = _basename;
-        int nameAttempt = 0;
-        while (classPool.getOrNull(basename) != null) {
-            basename = _basename + "_" + nameAttempt;
-            nameAttempt += 1;
-        }
 
         try {
             // Get CtClass objects and prep

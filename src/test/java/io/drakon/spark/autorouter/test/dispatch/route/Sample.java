@@ -14,4 +14,10 @@ public class Sample {
         return null;
     }
 
+    @Routes.GET(path = "/")
+    public static Object sampleTwo(Request req, Response res) {
+        tripped = true;
+        return null;
+    }
+
 }
