@@ -141,11 +141,11 @@ public class Autorouter {
         HashMap<Class<?>, String> pathClassMap = new HashMap<>();
         for (Class<?> cls : ref.getTypesAnnotatedWith(Routes.PathGroup.class)) {
             StringBuilder path = new StringBuilder();
-            Class<?> clsSuper = cls;
-            while (clsSuper != Object.class) {
-                Routes.PathGroup group = cls.getAnnotation(Routes.PathGroup.class);
+            Class<?> clsParent = cls;
+            while (clsParent != null) {
+                Routes.PathGroup group = clsParent.getAnnotation(Routes.PathGroup.class);
                 if (group != null) { path.insert(0, group.prefix()); }
-                clsSuper = clsSuper.getSuperclass();
+                clsParent = clsParent.getDeclaringClass();
             }
             pathClassMap.put(cls, path.toString());
         }

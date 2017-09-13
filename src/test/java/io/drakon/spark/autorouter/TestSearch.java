@@ -2,7 +2,9 @@ package io.drakon.spark.autorouter;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import io.drakon.spark.autorouter.test.advroute.AdvancedRoutes;
@@ -143,6 +145,55 @@ public class TestSearch {
                 assertTrue(info.transformer instanceof AdvancedRoutes.CustomTransformer,
                         "transformer constructed correctly");
             }));
+        }
+
+        @AfterAll
+        void teardown() {
+            searchResult = null;
+        }
+    }
+
+    @Nested
+    @DisplayName("Path groups search")
+    @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+    class PathGroupSearch {
+
+        Autorouter.SearchResult searchResult;
+
+        @BeforeAll
+        void setup() {
+            Autorouter router = new Autorouter("io.drakon.spark.autorouter.test.groups");
+            searchResult = router.search();
+        }
+
+        @Test
+        @DisplayName("single-level path groups work correctly")
+        void testSingleLevel() {
+            Set<Pair<Method, Autorouter.RouteInfo>> set = searchResult.routes.get(Routes.GET.class);
+            assertEquals(2, set.size(), "only two routes exist");
+
+            List<Pair<Method, Autorouter.RouteInfo>> ls = set.stream()
+                    .filter(p -> p.first.getName().equals("parentRoute"))
+                    .collect(Collectors.toList());
+
+            assertEquals(1, ls.size(), "only one route named 'parentRoute'");
+            Autorouter.RouteInfo info = ls.get(0).second;
+            assertEquals("/parent/", info.path);
+        }
+
+        @Test
+        @DisplayName("second-level path groups work correctly")
+        void testSecondLevel() {
+            Set<Pair<Method, Autorouter.RouteInfo>> set = searchResult.routes.get(Routes.GET.class);
+            assertEquals(2, set.size(), "only two routes exist");
+
+            List<Pair<Method, Autorouter.RouteInfo>> ls = set.stream()
+                    .filter(p -> p.first.getName().equals("childRoute"))
+                    .collect(Collectors.toList());
+
+            assertEquals(1, ls.size(), "only one route named 'childRoute'");
+            Autorouter.RouteInfo info = ls.get(0).second;
+            assertEquals("/parent/child/", info.path);
         }
 
         @AfterAll
