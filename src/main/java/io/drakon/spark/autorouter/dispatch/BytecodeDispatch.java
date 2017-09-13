@@ -40,18 +40,37 @@ public class BytecodeDispatch {
         }
     }
 
+    /**
+     * Generates a IRouteDispatch subclass for the given target method.
+     *
+     * @param targetMethod The method the stub class should invoke.
+     * @return An IRouteDispatch subclass or null for invalid methods.
+     */
     @SuppressWarnings("unchecked")
     public Class<IRouteDispatch> generateRouteStub(Method targetMethod) {
         if (!isValidTarget(StubType.Route, targetMethod)) return null;
         return (Class<IRouteDispatch>) generateClass(StubType.Route, targetMethod, null);
     }
 
+    /**
+     * Generates a IExceptionDispatch subclass for the given target method.
+     *
+     * @param targetMethod The method the stub class should invoke.
+     * @return An IExceptionDispatch subclass or null for invalid methods.
+     */
     @SuppressWarnings("unchecked")
     public Class<IExceptionDispatch> generateExceptionStub(Method targetMethod, Class<? extends Exception> exType) {
         if (!isValidTarget(StubType.Exception, targetMethod)) return null;
         return (Class<IExceptionDispatch>) generateClass(StubType.Exception, targetMethod, exType);
     }
 
+    /**
+     * Determines if a target method is valid for a given dispatch type.
+     *
+     * @param type The dispatcher type.
+     * @param m Target method.
+     * @return True if valid, false otherwise.
+     */
     private boolean isValidTarget(StubType type, Method m) {
         try {
             if (m.getReturnType() == void.class || m.getParameterCount() != type.params
@@ -86,6 +105,15 @@ public class BytecodeDispatch {
         }
     }
 
+    /**
+     * The meat of the bytecode dispatcher. Takes a type, target method and optionally an Exception type and spits out
+     * a shiny new dispatcher class of the appropriate dispatch interface.
+     *
+     * @param type The type of dispatcher.
+     * @param targetMethod Target method the new class will invoke.
+     * @param exType The Exception type, if making an Exception dispatcher.
+     * @return A new dispatcher subclass.
+     */
     private Class generateClass(StubType type, Method targetMethod,
                                 @Nullable Class<? extends Exception> exType) {
         Class targetClass = targetMethod.getDeclaringClass();
