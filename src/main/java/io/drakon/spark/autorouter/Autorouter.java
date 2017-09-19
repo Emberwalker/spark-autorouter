@@ -37,6 +37,8 @@ public class Autorouter {
     private static final Logger log = LoggerFactory.getLogger(Autorouter.class);
     private final String pkg;
     private boolean routingComplete = false;
+    private boolean debugPageAdded = false;
+    SearchResult lastSearch = null;
 
     static final List<Class<? extends Annotation>> ALL_ROUTE_ANNOTATIONS = Arrays.asList(
             Routes.GET.class,
@@ -215,6 +217,7 @@ public class Autorouter {
         routingComplete = true;
 
         SearchResult searchResult = search();
+        lastSearch = searchResult;
 
         // Setup filters and exception handlers
         searchResult.exceptionHandlers.forEach(this::registerExceptionHandler);
@@ -236,6 +239,18 @@ public class Autorouter {
 
         // Setup routes
         searchResult.routes.forEach(this::registerRoutes);
+    }
+
+    /**
+     * Enables a Route Overview page inspired by older versions of Spark.
+     *
+     * @param path Path to mount the overview route on.
+     */
+    public void enableRouteOverview(String path) {
+        if (debugPageAdded) return;
+        RouteOverview overview = new RouteOverview(this);
+        get(path, overview::route);
+        debugPageAdded = true;
     }
 
     /**
