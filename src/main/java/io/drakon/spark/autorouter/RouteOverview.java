@@ -65,9 +65,13 @@ class RouteOverview {
 
         Map<String, Object> model = new HashMap<>();
         model.put("beforeFilters", beforeFilters);
+        model.put("beforeFilters?", beforeFilters.size() != 0);
         model.put("afterFilters", afterFilters);
+        model.put("afterFilters?", afterFilters.size() != 0);
         model.put("afterAfterFilters", afterAfterFilters);
+        model.put("afterAfterFilters?", afterAfterFilters.size() != 0);
         model.put("exceptionHandlers", exceptionHandlers);
+        model.put("exceptionHandlers?", exceptionHandlers.size() != 0);
         model.put("routes", routes);
         return new MustacheTemplateEngine("autorouter/templates")
                 .render(new ModelAndView(model, "routeOverview.mustache"));

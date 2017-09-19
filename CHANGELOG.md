@@ -1,4 +1,7 @@
 # Changelog
+## 0.0.5
+- Route overview fixes.
+
 ## 0.0.4
 - Add Route Overview feature.
 - Add example/test project in `src/dev`.

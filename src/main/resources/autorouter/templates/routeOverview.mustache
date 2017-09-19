@@ -42,7 +42,7 @@
             </tbody>
         </table>
     </div>
-    {{#beforeFilters}}
+    {{#beforeFilters?}}
     <div class="row">
         <h1>Before Filters</h1>
         <table class="table table-striped table-responsive">
@@ -64,8 +64,8 @@
             </tbody>
         </table>
     </div>
-    {{/beforeFilters}}
-    {{#afterFilters}}
+    {{/beforeFilters?}}
+    {{#afterFilters?}}
     <div class="row">
         <h1>After Filters</h1>
         <table class="table table-striped table-responsive">
@@ -87,8 +87,8 @@
             </tbody>
         </table>
     </div>
-    {{/afterFilters}}
-    {{#afterAfterFilters}}
+    {{/afterFilters?}}
+    {{#afterAfterFilters?}}
     <div class="row">
         <h1>After After Filters</h1>
         <table class="table table-striped table-responsive">
@@ -108,8 +108,8 @@
             </tbody>
         </table>
     </div>
-    {{/afterAfterFilters}}
-    {{#exceptionHandlers}}
+    {{/afterAfterFilters?}}
+    {{#exceptionHandlers?}}
     <div class="row">
         <h1>Exception Handlers</h1>
         <table class="table table-striped table-responsive">
@@ -129,7 +129,7 @@
             </tbody>
         </table>
     </div>
-    {{/exceptionHandlers}}
+    {{/exceptionHandlers?}}
 </div>
 
 <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
