@@ -1,4 +1,7 @@
 # Changelog
+## 0.0.6
+- Tweaks to Route Overview page.
+
 ## 0.0.5
 - Route overview fixes.
 
