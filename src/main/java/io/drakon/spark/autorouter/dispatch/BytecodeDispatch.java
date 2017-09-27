@@ -6,36 +6,34 @@ import java.lang.reflect.Modifier;
 import javax.annotation.Nullable;
 import javax.annotation.ParametersAreNonnullByDefault;
 
-import javassist.*;
+import org.objectweb.asm.ClassWriter;
+import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.Type;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import spark.Response;
 import spark.Request;
 
+import static org.objectweb.asm.Opcodes.*;
+
 /**
  * Internal bytecode-generating dispatcher to preserve performance even on hot paths, instead of reflection invocation.
- *
- * Based heavily on Flightpath's bytecode generation:
- * https://github.com/Emberwalker/Flightpath/tree/master/src/main/java/io/drakon/flightpath/dispatch
  */
 @ParametersAreNonnullByDefault
 public class BytecodeDispatch {
 
     private static final Logger log = LoggerFactory.getLogger(BytecodeDispatch.class);
-
-    private static final String TWO_DISPATCH_BODY = "{ return $TARGET.$METHOD($1, $2); }";
-    private static final String THREE_DISPATCH_BODY = "{ return $TARGET.$METHOD($1, $2, $3); }";
+    private static final ARClassLoader classLoader = new ARClassLoader();
 
     private enum StubType {
-        Route(TWO_DISPATCH_BODY, "IRouteDispatch", 2),
-        Exception(THREE_DISPATCH_BODY, "IExceptionDispatch", 3);
+        Route(IRouteDispatch.class, 2),
+        Exception(IExceptionDispatch.class, 3);
 
-        public final String template;
-        public final String iface;
+        public final Type iface;
         public final int params;
-        StubType(String template, String iface, int params) {
-            this.template = template;
-            this.iface = "io.drakon.spark.autorouter.dispatch." + iface;
+        StubType(Class iface, int params) {
+            this.iface = Type.getType(iface);
             this.params = params;
         }
     }
@@ -117,60 +115,54 @@ public class BytecodeDispatch {
     private Class generateClass(StubType type, Method targetMethod,
                                 @Nullable Class<? extends Exception> exType) {
         Class targetClass = targetMethod.getDeclaringClass();
-        // Generate unique name
-        String basename = "io.drakon.spark.autorouter.dispatch.gen.routes$Generated" + type.name() + "Dispatch_"
-                + targetClass.getCanonicalName() + "_" + targetMethod.getName() + "$" + type.name();
-        ClassPool classPool = ClassPool.getDefault();
+        String basename = "$Generated" + type.name() + "Dispatch_"
+                + targetClass.getCanonicalName().replace('.', '_') + "$" + targetMethod.getName();
 
-        try {
-            // Get CtClass objects and prep
-            CtClass ctClass = classPool.makeClass(basename);
-            CtClass iface = classPool.get(type.iface);
-            ctClass.setInterfaces(new CtClass[]{iface});
-            CtClass objectCtClass = classPool.get(Object.class.getName());
-            CtClass exceptionCtClass = classPool.get((exType == null ? Exception.class : exType).getName());
-            CtClass requestCtClass = classPool.get(Request.class.getName());
-            CtClass responseCtClass = classPool.get(Response.class.getName());
-            CtClass targetCtClass = classPool.get(targetClass.getName());
+        if (type == StubType.Exception && exType == null)
+            throw new RuntimeException("exType must not be null when StubType == Exception");
 
-            // Create ctor.
-            //CtConstructor constr = CtNewConstructor.skeleton(new CtClass[]{targetCtClass}, null, ctClass);
-            CtConstructor constr = CtNewConstructor.skeleton(new CtClass[]{}, null, ctClass);
-            ctClass.addConstructor(constr);
+        ClassWriter writer = new ClassWriter(ClassWriter.COMPUTE_FRAMES);
 
-            // Create fields.
-            /*CtField.Initializer init = CtField.Initializer.byParameter(0);
-            CtField field = new CtField(targetCtClass, "target", ctClass);
-            ctClass.addField(field, init);*/
+        // Visit the class
+        String asmBasename = "io/drakon/spark/autorouter/dispatch/gen/routes" + basename;
+        writer.visit(Opcodes.V1_8, ACC_PUBLIC + ACC_FINAL, asmBasename, null, "java/lang/Object",
+                new String[]{ type.iface.getInternalName() });
 
-            // Generate dispatch method
-            CtMethod dispatchMethod;
-            switch (type) {
-                case Route:
-                    dispatchMethod = new CtMethod(objectCtClass, "dispatch",
-                            new CtClass[]{requestCtClass, responseCtClass}, ctClass);
-                    break;
-                case Exception:
-                    dispatchMethod = new CtMethod(objectCtClass, "dispatch",
-                            new CtClass[]{exceptionCtClass, requestCtClass, responseCtClass}, ctClass);
-                    break;
-                default:
-                    throw new RuntimeException("Impossible!");
-            }
-            dispatchMethod.setBody(type.template.replace("$TARGET", targetCtClass.getName())
-                    .replace("$METHOD", targetMethod.getName()));
-            ctClass.addMethod(dispatchMethod);
+        // Constructor
+        // from https://coderwall.com/p/k9uusw/generate-default-constructor-using-asm-5-bytecode-manipulation
+        MethodVisitor ctorMv = writer.visitMethod(ACC_PUBLIC, "<init>", "()V", null, null);
+        ctorMv.visitCode();
+        ctorMv.visitVarInsn(ALOAD, 0);
+        ctorMv.visitMethodInsn(INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false);
+        ctorMv.visitInsn(RETURN);
+        ctorMv.visitMaxs(1,1);
+        ctorMv.visitEnd();
 
-            // Dump finished class and release from the ClassPool (as we don't edit existing generated classes)
-            Class out = ctClass.toClass();
-            ctClass.detach();
-
-            return out;
-        } catch (CannotCompileException ex) {
-            throw new RuntimeException("Unable to compile; make sure you're running a JDK, not a JRE!", ex);
-        } catch (NotFoundException ex) {
-            throw new RuntimeException(ex);
+        // Visit the dispatch method
+        String mDescript = "(" +
+                (type == StubType.Exception ? "L" + Type.getType(exType).getInternalName() + ";" : "") +
+                "Lspark/Request;Lspark/Response;)Ljava/lang/Object;";
+        MethodVisitor mv = writer.visitMethod(ACC_PUBLIC, "dispatch",
+                mDescript,
+                null, null);
+        int base = 1;
+        if (type == StubType.Exception) {
+            mv.visitVarInsn(ALOAD, 1);
+            base += 1;
         }
+        mv.visitVarInsn(ALOAD, base);
+        mv.visitVarInsn(ALOAD, base + 1);
+        mv.visitMethodInsn(INVOKESTATIC, Type.getType(targetClass).getInternalName(),
+                targetMethod.getName(), Type.getMethodDescriptor(targetMethod), false);
+        mv.visitMaxs(base + 1, 0);
+        mv.visitInsn(ARETURN);
+        mv.visitEnd();
+
+        // End visitations
+        writer.visitEnd();
+        byte[] b = writer.toByteArray();
+
+        return classLoader.defineClass("io.drakon.spark.autorouter.dispatch.gen.routes" + basename, b);
     }
 
 }

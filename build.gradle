@@ -19,7 +19,7 @@ repositories {
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
 group = 'io.drakon.spark'
-version = '0.0.6'
+version = '0.0.7'
 
 dependencies {
     // JSR305 (@Nullable annotations)
@@ -32,8 +32,8 @@ dependencies {
     // Reflections
     compile group: 'org.reflections', name: 'reflections', version: '0.9.11'
 
-    // Javassist bytecode generation
-    compile group: 'org.javassist', name: 'javassist', version: '3.21.0-GA'
+    // ASM
+    compile group: 'org.ow2.asm', name: 'asm', version: '6.0'
 
     // Logging (SLF4j)
     compile group: 'org.slf4j', name: 'slf4j-api', version: '1.7.25'

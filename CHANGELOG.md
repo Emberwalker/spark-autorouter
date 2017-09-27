@@ -1,4 +1,7 @@
 # Changelog
+## 0.0.7
+- Switch to ASM bytecode generation backend.
+
 ## 0.0.6
 - Tweaks to Route Overview page.
 

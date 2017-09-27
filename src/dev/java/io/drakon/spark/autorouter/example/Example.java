@@ -29,10 +29,10 @@ public class Example {
         return null;
     }
 
-    /*@Routes.AfterAfter
+    @Routes.AfterAfter
     public static Object afterAfter(Request req, Response res) {
         return null;
-    }*/
+    }
 
     @Routes.ExceptionHandler(exceptionType = Exception.class)
     public static Object except(Exception ex, Request req, Response res) {
